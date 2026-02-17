@@ -44,7 +44,7 @@ Un arcade shooter espacial donde controlas una nave con sistema de propulsión a
 Para el correcto funcionamiento, el proyecto debe estar organizado así:
 ```text
 /
-├── main.py
+├── shipGame.py
 ├── audio/
 │   ├── Title Screen.wav
 │   ├── Level 1.wav
@@ -56,4 +56,5 @@ Para el correcto funcionamiento, el proyecto debe estar organizado así:
 │   └── titleBG.jpg
 └── fonts/
     ├── kenvector_future.ttf
+
     └── future-earth.ttf
