@@ -21,6 +21,8 @@ screenHeigh = 600
 """Alto de la pantalla"""
 screenSize = (screenWidth, screenHeigh)
 """Tamaño de la pantalla"""
+maxFps = 60
+"""FPS máximos"""
 
 titlePos=(screenWidth // 2, screenHeigh // 2 - 50)
 """Posición del título"""
@@ -35,6 +37,8 @@ basePath = os.path.dirname(__file__)
 
 shipPath = os.path.join(basePath, "sprites/ship.png")
 """Obtener camino a imagen de nave"""
+enemyPath = os.path.join(basePath, "sprites/enemy.png")
+"""Obtener camino a imagen de enemigo"""
 bgPath = os.path.join(basePath, "sprites/bg.png")
 """Obtener camino a imagen de fondo"""
 titleBgPath  = os.path.join(basePath, "sprites/titleBG.jpg")
@@ -44,6 +48,8 @@ laserPath = os.path.join(basePath, "audio/laser.ogg")
 """Obtener camino a sonido de disparo"""
 thrusterPath = os.path.join(basePath, "audio/thruster.ogg")
 """Obtener camino a sonido de movimiento"""
+explosionPath = os.path.join(basePath, "audio/Explosion.wav")
+"""Obtener camino a sonido de explosión"""
 titleOst = os.path.join(basePath, "audio/Title Screen.wav")
 """Obtener camino a música del título"""
 gameOst = os.path.join(basePath, "audio/Level 1.wav")
@@ -56,6 +62,8 @@ tFontPath = os.path.join(basePath, "fonts/future-earth.ttf")
 
 ship = pygame.image.load(shipPath).convert_alpha()
 """Imagen de una nave espacial"""
+enemy = pygame.image.load(enemyPath).convert_alpha()
+"""Imagen de una nave enemiga"""
 bg = pygame.image.load(bgPath).convert()
 """Imagen de fondo"""
 titleBg = pygame.image.load(titleBgPath).convert()
@@ -66,13 +74,29 @@ bgWidth = bg.get_width()
 bgHeight = bg.get_height()
 """Alto del fondo"""
 
-shipSpeed = 5
+shipSpeed = 300
 """Velocidad de la nave"""
 
 shipWidth = ship.get_width()
 """Ancho de la nave"""
 shipHeight = ship.get_height()
 """Alto de la nave"""
+
+enemySpeed = 200
+"""Velocidad de los enemigos"""
+
+enemyWidth = enemy.get_width()
+"""Ancho del enemigo"""
+enemyHeight = enemy.get_height()
+"""Alto del enemigo"""
+
+enemies = []
+"""Lista de enemigos"""
+
+ENEMY_EVENT = pygame.USEREVENT + 1
+"""Evento de creación de enemigos"""
+# Crear evento periódico
+pygame.time.set_timer(ENEMY_EVENT, 5000)
 
 maxX = screenWidth - shipWidth
 """Posición X máxima"""
@@ -91,6 +115,8 @@ fireSfx = pygame.mixer.Sound(laserPath)
 """Sonido de disparo"""
 thruster = pygame.mixer.Sound(thrusterPath)
 """Sonido de movimiento rápido"""
+explisionSfx = pygame.mixer.Sound(explosionPath)
+"""Sonido de explosion"""
 # Reservar canal para el motor para iniciar y parar el sonido siempre en el mismo sitio
 # 7 por que por defecto es el canal más alto de 0 a 7
 thrusterChannel = pygame.mixer.Channel(7)
@@ -121,6 +147,11 @@ promptRect = promptText.get_rect(center=subTitlePos)
 
 shots = 0
 """Contador de disparos"""
+proyectiles = []
+"""Disparos en juego"""
+laserColor = (255, 200, 0)
+"""Velocidad de las balas"""
+laserSpeed = 500
 
 isRunning = True
 """Está ejecutandose el juego"""
@@ -146,6 +177,9 @@ keysDown = (pygame.K_s, pygame.K_DOWN)
 keyPause = (pygame.K_p)
 """Tecla de pausa"""
 
+deltaTime = 0
+"""tiempo transcurrido en segundos desde el último frame"""
+
 def loadMusic (musicFile):
     """Reproducir música"""
     
@@ -157,13 +191,23 @@ def loadMusic (musicFile):
 def resetShip():
     """Reiniciar nave"""
 
-    global shots, shipX, shipY
+    global shots, shipX, shipY, proyectiles, enemies
     
     # Reiniciamos disparos
     shots = 0
+    proyectiles = []
+    enemies = []
      # Reiniciar posición de nave
     shipX = maxX/2
     shipY = maxY/2
+
+def createEnemy():
+    """Crear enemigos"""
+    global enemies
+
+    # Crear enemigo
+    newEnemy = pygame.Rect(shipX, 0 - enemyHeight, enemyWidth, enemyHeight)
+    enemies.append(newEnemy)
 
 def handleKeyPause():
     """Controlar tecla Pausa"""
@@ -193,7 +237,7 @@ def handleKeyExit():
 def handleKeyFire():
     """Controlar tecla de disparo"""
 
-    global inTitle, inPause, shots
+    global inTitle, inPause
 
     #Si estamos en el título
     if inTitle:
@@ -206,8 +250,12 @@ def handleKeyFire():
     else:
         # En juego reproducir sonido
         fireSfx.play()
-        # Sumar disparos
-        shots += 1
+
+        # Añadir disparos
+        newShot = pygame.Rect(shipX, shipY + shipHeight/2, 5, 10)
+        proyectiles.append(newShot)
+        newShot = pygame.Rect(shipX + (shipWidth * 0.95), shipY + shipHeight/2, 5, 10)
+        proyectiles.append(newShot)
 
 def handleEvents():
     """Controlar eventos"""
@@ -229,6 +277,9 @@ def handleEvents():
             # Tecla Pausa
             if event.key == keyPause:
                 handleKeyPause()
+        # Evento de creación de enemigos
+        if event.type == ENEMY_EVENT:
+            createEnemy()
 
 
 def drawTitle():
@@ -258,11 +309,63 @@ def drawUi():
     # Dibujar texto
     screen.blit(text, textPos)
 
+def hadleEnemies():
+    """Controlar los enemigos"""
+
+    global enemies, proyectiles, deltaTime, shots
+    # Crear copia temporal para evitar problemas al borrar elementos
+    tempList = enemies.copy()
+    player = pygame.Rect(shipX, shipY, shipWidth, shipHeight)
+    # Por cada enemigo en enemigos
+    for ship in tempList:
+        # Movemos el enemigo
+        ship.y += enemySpeed * deltaTime
+        # Si salimos de la pantalla borramos el enemigo
+        if ship.y > screenHeigh: enemies.remove(ship)
+        # Dibujar el enemigo
+        screen.blit(enemy, (ship.x, ship.y))
+        tempBullets = proyectiles.copy()
+        # Comprobamos colisiones con balas
+        for bullet in tempBullets:
+            # Si chocamos con la bala borramos la nave y la bala
+            if ship.colliderect(bullet):
+                enemies.remove(ship)
+                proyectiles.remove(bullet)
+                # Sumar disparos
+                shots += 1
+                # Reproducir sonido explosión
+                explisionSfx.play()
+                # Salimos del bucle de balas
+                break
+        # Si choca con el jugador
+        if ship.colliderect(player):
+            # Reiniciar el nivel
+            resetShip()
+            # Reproducir sonido explosión
+            explisionSfx.play()
+
+def handleProyectiles():
+    """Controlar los disparos disparos"""
+
+    global proyectiles, laserSpeed, deltaTime
+    # Crear copia temporal para evitar problemas al borrar elementos
+    tempList = proyectiles.copy()
+    # Por cada bala en disparos
+    for bullet in tempList:
+        # Movemos la bala
+        bullet.y -= laserSpeed * deltaTime
+        # Si salimos de la pantalla borramos la bala
+        if bullet.y < 0: proyectiles.remove(bullet)
+        # Dibujar la bala
+        pygame.draw.rect(screen, laserColor, bullet)
+
 def drawGame():
     """Dibujar el juego"""
     # Dibujar fondo
     drawRepeatBg()
     # Dibujar nave
+    handleProyectiles()
+    hadleEnemies()
     screen.blit(ship, (shipX, shipY))
     # Dibujar UI
     drawUi()
@@ -279,7 +382,7 @@ def drawPause():
     # Dibujar UI
     drawUi()
 
-def handle_player_movement(keys, x, y):
+def handle_player_movement(keys, x, y, dt):
     """Calcula la nueva posición de la nave y aplica límites"""
     newX, newY = 0, 0
     
@@ -317,8 +420,8 @@ def handle_player_movement(keys, x, y):
         thrusterChannel.stop()
 
     # Aplicar movimiento
-    x += newX
-    y += newY
+    x += newX * dt
+    y += newY * dt
 
     # Limitar a la pantalla (Clamping)
     x = max(0, min(x, maxX))
@@ -335,6 +438,9 @@ while isRunning:
     # Controlar eventos
     handleEvents()
 
+    # Actualizar deltaTime y Configurar fps máximos
+    deltaTime = clock.tick(maxFps) / 1000
+
     # Si estamos en el título
     if inTitle:
         # Dibujamos el título
@@ -350,16 +456,12 @@ while isRunning:
             keys = pygame.key.get_pressed()
 
             # Actualizar posición de la nave
-            shipX, shipY = handle_player_movement(keys, shipX, shipY)
+            shipX, shipY = handle_player_movement(keys, shipX, shipY, deltaTime)
 
             # Dibujar el juego    
             drawGame()
 
-    pygame.display.update()
     # Actualizar la pantalla
-
-    clock.tick(60)
-    # Configurar fps máximo
-
+    pygame.display.update()
 # Cerrar el juego
 pygame.quit()
