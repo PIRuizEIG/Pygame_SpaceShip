@@ -5,6 +5,8 @@
 import os
 # Importar PyGame
 import pygame
+# Importar aleatorio
+import random
 
 # Iniciar PyGame
 pygame.init()
@@ -96,7 +98,7 @@ enemies = []
 ENEMY_EVENT = pygame.USEREVENT + 1
 """Evento de creación de enemigos"""
 # Crear evento periódico
-pygame.time.set_timer(ENEMY_EVENT, 5000)
+pygame.time.set_timer(ENEMY_EVENT, 1750)
 
 maxX = screenWidth - shipWidth
 """Posición X máxima"""
@@ -204,9 +206,10 @@ def resetShip():
 def createEnemy():
     """Crear enemigos"""
     global enemies
-
+    # Generamos una posición X aleatoria dentro de los límites de la pantalla
+    randomX = random.randint(0, screenWidth - enemyWidth)
     # Crear enemigo
-    newEnemy = pygame.Rect(shipX, 0 - enemyHeight, enemyWidth, enemyHeight)
+    newEnemy = pygame.Rect(randomX, 0 - enemyHeight, enemyWidth, enemyHeight)
     enemies.append(newEnemy)
 
 def handleKeyPause():
@@ -303,7 +306,7 @@ def drawRepeatBg():
 def drawUi():
     """Dibujar texto de puntuación"""
     # Cargar texto
-    text = gameFont.render(f"Shoots: {shots}", True, gameTextColor)
+    text = gameFont.render(f"Score: {shots}", True, gameTextColor)
     # Calcular rectangulo de posición de texto
     textPos = text.get_rect(topright=(screenWidth-20, 20))
     # Dibujar texto
@@ -314,35 +317,43 @@ def hadleEnemies():
 
     global enemies, proyectiles, deltaTime, shots
     # Crear copia temporal para evitar problemas al borrar elementos
-    tempList = enemies.copy()
+    survivors = []
     player = pygame.Rect(shipX, shipY, shipWidth, shipHeight)
     # Por cada enemigo en enemigos
-    for ship in tempList:
+    for ship in enemies:
+        isDead = False
         # Movemos el enemigo
         ship.y += enemySpeed * deltaTime
         # Si salimos de la pantalla borramos el enemigo
         if ship.y > screenHeigh: enemies.remove(ship)
-        # Dibujar el enemigo
-        screen.blit(enemy, (ship.x, ship.y))
         tempBullets = proyectiles.copy()
+        # Si choca con el jugador
+        if ship.colliderect(player):
+            # Reproducir sonido explosión
+            explisionSfx.play()
+            # Reiniciar el nivel
+            resetShip()
+            # Salir
+            return
         # Comprobamos colisiones con balas
         for bullet in tempBullets:
-            # Si chocamos con la bala borramos la nave y la bala
+            # Si chocamos con la bala borramos la bala
             if ship.colliderect(bullet):
-                enemies.remove(ship)
                 proyectiles.remove(bullet)
                 # Sumar disparos
                 shots += 1
                 # Reproducir sonido explosión
                 explisionSfx.play()
-                # Salimos del bucle de balas
-                break
-        # Si choca con el jugador
-        if ship.colliderect(player):
-            # Reiniciar el nivel
-            resetShip()
-            # Reproducir sonido explosión
-            explisionSfx.play()
+                # Marcamos al enemigo como muerto
+                isDead = True
+        # Si no estamos muertos
+        if not isDead:
+            # Añadimos a la lista de supervivientes
+            survivors.append(ship)
+            # Dibujar el enemigo
+            screen.blit(enemy, (ship.x, ship.y))
+    # Actualizar lista de enemigos con los supervivientes
+    enemies = survivors
 
 def handleProyectiles():
     """Controlar los disparos disparos"""
