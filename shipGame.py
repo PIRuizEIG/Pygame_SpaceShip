@@ -282,7 +282,10 @@ def handleEvents():
                 handleKeyPause()
         # Evento de creación de enemigos
         if event.type == ENEMY_EVENT:
-            createEnemy()
+            # Si no estamos en el título o ni en pausa 
+            if not inPause and not inTitle:
+                # Crear enemigo
+                createEnemy()
 
 
 def drawTitle():
