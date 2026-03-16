@@ -81,7 +81,7 @@ Enemy (Clase Base)
 ## ⏯️ Ejecución
 
 ```bash
-python shipGame.py
+python game.py
 ```
 
 ## 📁 Estructura de Carpetas
@@ -113,5 +113,6 @@ Para el correcto funcionamiento, el proyecto debe estar organizado así:
 ```
 
 ## 📸 Capturas
+
 ![Gameplay Preview](screenshoots/screen_capture1.png)
 ![Gameplay Preview](screenshoots/screen_capture2.png)
