@@ -45,9 +45,11 @@ def loadMusic (musicFile):
 
 def reset():
     """Reiniciar Juego"""
-    global score
+    global score, boss
     # Reiniciamos disparos
     score = 0
+    # Eliminamos el boss
+    boss = None
     proyectiles.clear()
     enemies.clear()
     player.resetPlayer()
@@ -167,7 +169,7 @@ def drawUi():
     # Dibujar texto
     screen.blit(text, textPos)
     # Dibujar vida del jugador
-    drawHealthBar(screen, 0, 0, player.hp, settings.PLAYER_HEALTH)
+    drawHealthBar(screen, 15, 15, player.hp, settings.PLAYER_HEALTH)
 
 def drawGame():
     """Dibujar el juego"""
@@ -265,6 +267,8 @@ def checkCollisions():
             break
     # Por cada proyectil y enemigo
     for bullet in proyectiles:
+        # Si la bala está desactivada salir
+        if bullet.isDead: break
         # Para cada enemigo
         for enemy in enemies:
             # Si hay colisión
@@ -286,7 +290,7 @@ def checkCollisions():
             # Si el jugador está muerto reiniciamos
             if player.isDead: reset()
         # Si existe boss
-        if boss:
+        if boss and not boss.isDead:
         # Colisión Balas vs Boss
             if bullet.rect.colliderect(boss.rect):
                 # Desactivar la baa
